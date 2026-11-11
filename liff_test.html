@@ -78,7 +78,7 @@ async function main() {
     if (!idToken) throw new Error("ไม่ได้ ID Token: ตรวจว่า LIFF เปิด scope openid และ profile");
 
     log("กำลังให้เซิร์ฟเวอร์ตรวจ token...");
-    const res = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/line-auth", {
+    const res = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/hyper-handler", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
