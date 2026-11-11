@@ -38,7 +38,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
 .tot{margin:6px 16px 12px;display:flex;justify-content:space-between;align-items:baseline;font-weight:600}.tot b{font-size:30px}
 .ok{margin:16px;padding:18px;background:#d6eddf;border-radius:16px;text-align:center}.ok b{display:block;font-size:30px}
 .tb{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:14px;color:var(--muted)}
+.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:13px;line-height:1.2;padding:0 2px;color:var(--muted)}
 .tb button[aria-selected=true]{color:var(--glass);font-weight:600}
 .tb button[aria-selected=true]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;background:var(--amber);border-radius:0 0 3px 3px}
 .bd{position:fixed;inset:0;z-index:50;background:rgba(10,20,16,.5);display:flex;align-items:flex-end;justify-content:center}
@@ -57,11 +57,15 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
     <section id="tab-buy"></section>
     <section id="tab-pay" hidden></section>
     <section id="tab-mem" hidden></section>
+    <section id="tab-pk" hidden></section>
+    <section id="tab-pr" hidden></section>
   </main>
   <nav class="tb" role="tablist">
     <button type="button" data-t="buy" aria-selected="true">รับซื้อ</button>
     <button type="button" data-t="pay" aria-selected="false" id="tbPay">ถอนเงิน</button>
     <button type="button" data-t="mem" aria-selected="false" id="tbMem">สมาชิก</button>
+    <button type="button" data-t="pk" aria-selected="false" id="tbPk">นัดรับ</button>
+    <button type="button" data-t="pr" aria-selected="false">ราคา</button>
   </nav>
 </div>
 <div class="bd" id="dlg" hidden><div class="sh" id="dlgBody"></div></div>
@@ -82,8 +86,8 @@ const $ = (id) => document.getElementById(id);
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const _rc = Element.prototype.replaceChildren;
 Element.prototype.replaceChildren = function (...k) { return _rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); };
-const S = { user: null, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
-const B = { house: null, lines: [], done: null, busy: false };
+const S = { user: null, allMats: [], pk: [], min: 50, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
+const B = { pickup: null, house: null, lines: [], done: null, busy: false };
 const UNIT = { kg: "กก.", piece: "ชิ้น", bag: "ถุง" };
 const METHOD = { cash: "เงินสด", bank_transfer: "โอนธนาคาร", promptpay: "พร้อมเพย์" };
 const STATUS = { pending: "รอตรวจสอบ", approved: "อนุมัติแล้ว", paid: "จ่ายแล้ว", rejected: "ปฏิเสธ", cancelled: "สมาชิกยกเลิก", confirmed: "ยืนยันแล้ว", voided: "ยกเลิกแล้ว" };
@@ -195,20 +199,25 @@ async function authenticate() {
   return data.user;
 }
 async function loadAll() {
-  const [mats, prices, vil, rec, pays, unl] = await Promise.all([
-    sb.from("materials").select("id,material_name,unit").eq("is_active", true).order("material_name"),
+  const [mats, prices, vil, rec, pays, unl, pk, set] = await Promise.all([
+    sb.from("materials").select("id,material_name,unit,is_active").order("material_name"),
     sb.from("material_prices").select("material_id,buy_price").is("effective_to", null),
     sb.from("villages").select("id,village_name").eq("is_active", true).order("village_code"),
     sb.from("purchase_transactions").select("id,receipt_no,status,gross_total,confirmed_at,created_at,households(household_code,household_name)").in("status", ["confirmed", "voided"]).order("created_at", { ascending: false }).limit(12),
     sb.from("payout_requests").select("id,amount,payout_method,payout_reference,status,requested_at,staff_note,households(household_code,household_name)").order("requested_at", { ascending: false }).limit(40),
     sb.from("profiles").select("id,display_name,picture_url,created_at").is("household_id", null).order("created_at", { ascending: false }).limit(30),
+    sb.from("pickup_requests").select("id,requested_date,preferred_time,material_note,estimated_weight_kg,status,staff_note,households(id,household_code,household_name)").in("status", ["requested", "scheduled"]).order("requested_date", { ascending: true }).limit(40),
+    sb.from("app_settings").select("value").eq("key", "min_payout_amount").maybeSingle(),
   ]);
-  S.mats = must(mats) || [];
+  S.allMats = must(mats) || [];
+  S.mats = S.allMats.filter((m) => m.is_active);
   S.price = new Map((must(prices) || []).map((p) => [p.material_id, Number(p.buy_price)]));
   S.villages = must(vil) || [];
   S.recent = must(rec) || [];
   S.pays = must(pays) || [];
   S.unlinked = must(unl) || [];
+  S.pk = must(pk) || [];
+  { const x = Number(must(set)?.value); S.min = x > 0 ? x : 50; }
   renderAll();
 }
 async function refresh() { try { await loadAll(); } catch (e) { console.error(e); toast("อัปเดตไม่สำเร็จ", 1); } }
@@ -247,7 +256,7 @@ function renderBuy() {
   upd();
   root.replaceChildren(
     h("div", { class: "house" }, h("div", null, h("small", { text: B.house.household_code }), h("b", { text: B.house.household_name })),
-      h("button", { class: "btn g s", style: "color:#fff;border-color:#4d7a6e", type: "button", text: "เปลี่ยนบ้าน", onclick: () => { B.house = null; B.lines = []; renderBuy(); } })),
+      h("button", { class: "btn g s", style: "color:#fff;border-color:#4d7a6e", type: "button", text: "เปลี่ยนบ้าน", onclick: () => { B.pickup = null; B.house = null; B.lines = []; renderBuy(); } })),
     rows,
     h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ เพิ่มวัสดุ", onclick: () => { B.lines.push(newLine()); renderBuy(); } })),
     h("div", { class: "tot" }, h("span", { text: "รวม" }), total),
@@ -270,13 +279,14 @@ async function submitBuy() {
   if (!ok) return;
   B.busy = true;
   try {
-    const c = await sb.rpc("create_purchase", { p_household_id: B.house.id, p_items: items });
+    const c = await sb.rpc("create_purchase", { p_household_id: B.house.id, p_items: items, p_pickup_request_id: B.pickup || null });
     if (c.error) throw c.error;
     const f = await sb.rpc("confirm_purchase", { p_transaction_id: c.data });
     if (f.error) { await sb.rpc("void_purchase", { p_transaction_id: c.data, p_reason: "confirm failed" }); throw f.error; }
     const r = must(await sb.from("purchase_transactions").select("receipt_no,gross_total").eq("id", c.data).single());
     B.done = { no: r.receipt_no, total: r.gross_total, name: B.house.household_code + " " + B.house.household_name };
-    B.house = null; B.lines = [];
+    if (B.pickup) await sb.from("pickup_requests").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", B.pickup);
+    B.pickup = null; B.house = null; B.lines = [];
     await refresh();
   } catch (e) { console.error(e); toast(thErr(e), 1); } finally { B.busy = false; }
 }
@@ -347,12 +357,95 @@ function renderMem() {
     h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ สร้างบ้านใหม่ (ยังไม่ผูกสมาชิก)", onclick: async () => { await newHouse(""); } })));
 }
 
+// ----- pickups -----
+const PKS = { requested: "รอยืนยัน", scheduled: "นัดหมายแล้ว" };
+const dd = (d) => d ? new Date(d + "T00:00:00+07:00").toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" }) : "ไม่ระบุวัน";
+async function pkSet(p, status) {
+  const note = h("input", { type: "text", maxlength: "120", placeholder: "เช่น จะไปวันพุธบ่าย" });
+  const T = { scheduled: ["นัดหมาย", "ยืนยันนัดหมาย"], completed: ["เสร็จสิ้นการรับของ", "เสร็จสิ้น"], cancelled: ["ยกเลิกคำขอ", "ยกเลิกคำขอ"] }[status];
+  const hs = p.households || {};
+  const v = await dlg(T[0], h("div", { class: "stack" }, h("p", { text: (hs.household_code || "") + " " + (hs.household_name || "") }), fld("หมายเหตุ (สมาชิกจะเห็น)", note)), T[1], () => ({ note: note.value.trim() }));
+  if (!v) return;
+  const patch = { status, updated_at: new Date().toISOString() };
+  if (v.note) patch.staff_note = v.note;
+  const { error } = await sb.from("pickup_requests").update(patch).eq("id", p.id);
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("บันทึกแล้ว"); await refresh();
+}
+function renderPk() {
+  $("tbPk").textContent = "นัดรับ" + (S.pk.length ? " (" + S.pk.length + ")" : "");
+  $("tab-pk").replaceChildren(h("h2", { class: "sec", text: "คำขอให้ไปรับของ" }), S.pk.length ? S.pk.map((p) => {
+    const hs = p.households || {};
+    return h("div", { class: "card" },
+      h("div", { class: "hd" }, h("span", { text: (hs.household_code || "") + " " + (hs.household_name || "") }), h("span", { class: "chip st-" + (p.status === "scheduled" ? "approved" : "pending"), text: PKS[p.status] })),
+      h("div", { class: "t", text: dd(p.requested_date) + "  " + (p.preferred_time || "") }),
+      h("div", { class: "s", text: (p.material_note || "") + (p.estimated_weight_kg ? "  ประมาณ " + p.estimated_weight_kg + " กก." : "") }),
+      p.staff_note ? h("div", { class: "s", text: "หมายเหตุ: " + p.staff_note }) : null,
+      h("div", { class: "acts" },
+        p.status === "requested" ? h("button", { class: "btn s", type: "button", text: "นัดหมาย", onclick: () => pkSet(p, "scheduled") }) : null,
+        h("button", { class: "btn s", style: "background:#d6eddf;color:#13613c", type: "button", text: "ไปรับซื้อ",
+          onclick: () => { B.house = { id: hs.id, household_code: hs.household_code, household_name: hs.household_name }; B.lines = [newLine()]; B.pickup = p.id; B.done = null; renderBuy(); showTab("buy"); } }),
+        p.status === "scheduled" ? h("button", { class: "btn g s", type: "button", text: "เสร็จสิ้น", onclick: () => pkSet(p, "completed") }) : null,
+        h("button", { class: "btn d s", type: "button", text: "ยกเลิก", onclick: () => pkSet(p, "cancelled") })));
+  }) : h("p", { class: "empty", text: "ไม่มีคำขอค้าง" }));
+}
+
+// ----- prices -----
+async function priceDlg(m) {
+  const cur = S.price.get(m.id);
+  const pr = h("input", { type: "text", inputmode: "decimal", value: cur != null ? String(cur) : "" });
+  const st = h("select", null, h("option", { value: "1", text: "ใช้งาน" }), h("option", { value: "0", text: "ปิดใช้งาน (ไม่ขึ้นตอนรับซื้อ)" }));
+  st.value = m.is_active ? "1" : "0";
+  const v = await dlg(m.material_name, h("div", { class: "stack" }, fld("ราคารับซื้อ (บาท / " + (UNIT[m.unit] || m.unit) + ")", pr), fld("สถานะ", st),
+    h("p", { class: "hint", style: "margin:0", text: "ราคาใหม่มีผลกับใบรับซื้อใบถัดไป ใบเก่าไม่เปลี่ยน" })), "บันทึก",
+    () => { const x = parseFloat(pr.value); return pr.value.trim() && !(x >= 0) ? { error: "ราคาไม่ถูกต้อง" } : { price: pr.value.trim() ? x : null, active: st.value === "1" }; });
+  if (!v) return;
+  try {
+    if (v.price != null && v.price !== cur) must(await sb.rpc("set_material_price", { p_material_id: m.id, p_price: v.price }));
+    if (v.active !== m.is_active) must(await sb.from("materials").update({ is_active: v.active }).eq("id", m.id));
+    toast("บันทึกแล้ว"); await refresh();
+  } catch (e) { console.error(e); toast(thErr(e), 1); }
+}
+async function addMat() {
+  const n = h("input", { type: "text", maxlength: "60", placeholder: "เช่น ทองแดง" });
+  const u = h("select", null, Object.entries(UNIT).map(([k, t]) => h("option", { value: k, text: t })));
+  const pr = h("input", { type: "text", inputmode: "decimal", placeholder: "ราคารับซื้อ" });
+  const v = await dlg("เพิ่มวัสดุใหม่", h("div", { class: "stack" }, fld("ชื่อวัสดุ", n), fld("หน่วย", u), fld("ราคารับซื้อ (บาท)", pr)), "เพิ่ม",
+    () => !n.value.trim() ? { error: "กรอกชื่อวัสดุ" } : !(parseFloat(pr.value) >= 0) ? { error: "กรอกราคา" } : { name: n.value.trim(), unit: u.value, price: parseFloat(pr.value) });
+  if (!v) return;
+  try {
+    const m = must(await sb.from("materials").insert({ material_code: "M" + Date.now().toString(36).toUpperCase(), material_name: v.name, unit: v.unit }).select("id").single());
+    must(await sb.rpc("set_material_price", { p_material_id: m.id, p_price: v.price }));
+    toast("เพิ่มวัสดุแล้ว"); await refresh();
+  } catch (e) { console.error(e); toast(thErr(e), 1); }
+}
+async function minDlg() {
+  const mi = h("input", { type: "text", inputmode: "decimal", value: String(S.min) });
+  const v = await dlg("ยอดขั้นต่ำถอนเงิน", h("div", { class: "stack" }, fld("บาทต่อครั้ง", mi), h("p", { class: "hint", style: "margin:0", text: "มีผลกับหน้าสมาชิกทันที" })), "บันทึก",
+    () => parseFloat(mi.value) > 0 ? parseFloat(mi.value) : { error: "ใส่ตัวเลขมากกว่า 0" });
+  if (!v) return;
+  const { error } = await sb.from("app_settings").update({ value: String(v), updated_at: new Date().toISOString() }).eq("key", "min_payout_amount");
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("บันทึกแล้ว"); await refresh();
+}
+function renderPr() {
+  $("tab-pr").replaceChildren(
+    h("div", { class: "rows", style: "margin-top:12px" }, h("button", { class: "row", type: "button", onclick: minDlg },
+      h("div", { class: "main" }, h("div", { class: "t", text: "ยอดขั้นต่ำถอนเงิน" }), h("div", { class: "s", text: "แตะเพื่อแก้ไข" })), h("div", { class: "a num", text: "฿" + baht(S.min) }))),
+    h("h2", { class: "sec", text: "ราคารับซื้อ" }),
+    S.allMats.length ? h("div", { class: "rows" }, S.allMats.map((m) => { const p = S.price.get(m.id);
+      return h("button", { class: "row", type: "button", onclick: () => priceDlg(m) },
+        h("div", { class: "main" }, h("div", { class: "t", text: m.material_name }), m.is_active ? null : h("div", { class: "s", text: "ปิดใช้งาน" })),
+        h("div", { class: "a num", text: p != null ? "฿" + baht(p) + " / " + (UNIT[m.unit] || m.unit) : "ไม่มีราคา" })); })) : h("p", { class: "empty", text: "ยังไม่มีวัสดุ" }),
+    h("div", { class: "pad", style: "margin-top:12px" }, h("button", { class: "btn g", type: "button", text: "+ เพิ่มวัสดุใหม่", onclick: addMat })));
+}
+
 // ----- boot -----
-function renderAll() { renderBuy(); renderPay(); renderMem(); }
+function renderAll() { renderBuy(); renderPay(); renderMem(); renderPk(); renderPr(); }
 function showTab(t) {
   S.tab = t;
   document.querySelectorAll(".tb button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
-  ["buy", "pay", "mem"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
+  ["buy", "pay", "mem", "pk", "pr"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
   window.scrollTo(0, 0);
 }
 async function start() {
