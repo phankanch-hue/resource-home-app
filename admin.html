@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>หลังบ้าน Resource Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#14211c;--muted:#5b6862;--paper:#eef1ed;--slip:#fcfdfb;--line:#d5dcd6;--glass:#0d3a32;--amber:#f3b63f;--amber-ink:#2b1d00;--pos:#17724a;--neg:#a8352b;--tab:60px}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{margin:0}
+body{font-family:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid #1c5c4e;outline-offset:2px}
+#app{max-width:600px;margin:0 auto;min-height:100vh;padding-bottom:calc(var(--tab) + env(safe-area-inset-bottom) + 24px)}
+.top{display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 16px 10px}
+.top h1{flex:1;margin:0;font-size:19px;font-weight:600}
+.ib{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:14px;background:var(--amber);color:var(--amber-ink);font-weight:600;font-size:17px}
+.btn:disabled{background:#d9ddd8;color:#7c867f}.btn.g{background:transparent;border:1px solid #b9c3bb;color:var(--ink);font-weight:500}
+.btn.s{min-height:38px;font-size:14px;border-radius:10px;width:auto;padding:0 14px}.btn.d{background:#f3d9d5;color:#8a2b22}
+.sec{margin:22px 16px 8px;font-size:16px;font-weight:600}.pad{margin:0 16px}.empty,.hint{margin:8px 16px;color:var(--muted);font-size:14px}
+.rows{margin:0 16px;background:var(--slip);border:1px solid var(--line);border-radius:14px}
+.row{display:flex;align-items:center;gap:10px;padding:12px 14px;width:100%;text-align:left;background:none;border:0}
+.row+.row{border-top:1px solid var(--line)}.row .main{flex:1;min-width:0}.row .t{font-weight:500}.row .s{font-size:13px;color:var(--muted);overflow-wrap:anywhere}.row .a{font-weight:600;white-space:nowrap}
+.card{margin:0 16px 12px;background:var(--slip);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.card .big{font-size:24px;font-weight:600}.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.chip{display:inline-block;padding:1px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.st-pending{background:#fbeccb;color:#6b4a00}.st-approved{background:#dce8f7;color:#1c4585}.st-paid,.st-confirmed{background:#d6eddf;color:#13613c}.st-rejected,.st-voided,.st-cancelled{background:#e3e6e2;color:#4b554f}
+.stack{display:grid;gap:12px}label{display:grid;gap:5px;font-size:14px;font-weight:500}
+input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius:10px;background:#fff;font-size:16px}
+.house{margin:0 16px 14px;background:var(--glass);color:#eaf4ef;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px}
+.house div{flex:1;min-width:0}.house small{color:#a9cfc3;display:block}
+.bl{margin:0 16px 12px;padding:12px;background:var(--slip);border:1px solid var(--line);border-radius:14px;display:grid;gap:8px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tot{margin:6px 16px 12px;display:flex;justify-content:space-between;align-items:baseline;font-weight:600}.tot b{font-size:30px}
+.ok{margin:16px;padding:18px;background:#d6eddf;border-radius:16px;text-align:center}.ok b{display:block;font-size:30px}
+.tb{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:14px;color:var(--muted)}
+.tb button[aria-selected=true]{color:var(--glass);font-weight:600}
+.tb button[aria-selected=true]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;background:var(--amber);border-radius:0 0 3px 3px}
+.bd{position:fixed;inset:0;z-index:50;background:rgba(10,20,16,.5);display:flex;align-items:flex-end;justify-content:center}
+.sh{width:100%;max-width:600px;max-height:92vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.sh h2{margin:0 0 12px;font-size:20px}.err{margin:8px 0;min-height:1.2em;color:var(--neg);font-size:14px}.sh .rows{margin:0;max-height:50vh;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab) + env(safe-area-inset-bottom) + 14px);z-index:60;max-width:90vw;padding:10px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:14px;text-align:center}.toast.e{background:var(--neg)}
+.state{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:12px;padding:24px;text-align:center;max-width:420px;margin:0 auto}.state p{margin:0;color:var(--muted)}.state .btn{width:auto;padding:0 22px}
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#dfe5df}
+</style>
+</head>
+<body>
+<div id="state" class="state"><p>กำลังเปิดหลังบ้าน...</p></div>
+<div id="app" hidden>
+  <header class="top"><h1>หลังบ้าน</h1><button class="ib" id="rf" type="button" aria-label="อัปเดตข้อมูล">↻</button></header>
+  <main>
+    <section id="tab-buy"></section>
+    <section id="tab-pay" hidden></section>
+    <section id="tab-mem" hidden></section>
+  </main>
+  <nav class="tb" role="tablist">
+    <button type="button" data-t="buy" aria-selected="true">รับซื้อ</button>
+    <button type="button" data-t="pay" aria-selected="false" id="tbPay">ถอนเงิน</button>
+    <button type="button" data-t="mem" aria-selected="false" id="tbMem">สมาชิก</button>
+  </nav>
+</div>
+<div class="bd" id="dlg" hidden><div class="sh" id="dlgBody"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ===== ใส่ค่า (LIFF_ID ของหน้าแอดมินเป็นคนละตัวกับหน้าสมาชิก) =====
+const CONFIG = {
+  LIFF_ID: "ใส่-LIFF-ID-ของหน้าแอดมิน",
+  SUPABASE_URL: "https://ykehbrzhjrhtwoijboyp.supabase.co",
+  SUPABASE_ANON_KEY: "ใส่-publishable-key",   // ห้ามใส่ secret / service_role
+  AUTH_FUNCTION: "hyper-handler",
+};
+// ================================================================
+const $ = (id) => document.getElementById(id);
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const S = { user: null, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
+const B = { house: null, lines: [], done: null, busy: false };
+const UNIT = { kg: "กก.", piece: "ชิ้น", bag: "ถุง" };
+const METHOD = { cash: "เงินสด", bank_transfer: "โอนธนาคาร", promptpay: "พร้อมเพย์" };
+const STATUS = { pending: "รอตรวจสอบ", approved: "อนุมัติแล้ว", paid: "จ่ายแล้ว", rejected: "ปฏิเสธ", cancelled: "สมาชิกยกเลิก", confirmed: "ยืนยันแล้ว", voided: "ยกเลิกแล้ว" };
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v === false || v == null) continue;
+    if (k === "class") el.className = v; else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, ""); else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return el;
+}
+const nf = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const baht = (n) => nf.format(money(n));
+const dt = (iso) => iso ? new Date(iso).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Bangkok" }) : "";
+const must = (r) => { if (r.error) throw r.error; return r.data; };
+const chip = (s) => h("span", { class: "chip st-" + s, text: STATUS[s] || s });
+const fld = (t, i) => h("label", null, h("span", { text: t }), i);
+let tt;
+function toast(m, e) { const t = $("toast"); t.textContent = m; t.className = "toast" + (e ? " e" : ""); t.hidden = false; clearTimeout(tt); tt = setTimeout(() => { t.hidden = true; }, 3500); }
+function thErr(e) {
+  const m = String((e && e.message) || e || "");
+  if (/forbidden/i.test(m)) return "ไม่มีสิทธิ์ทำรายการนี้";
+  if (/balance too low/i.test(m)) return "ยอดคงเหลือไม่พอสำหรับยกเลิก (สมาชิกถอนไปแล้ว) ให้ใช้ปรับยอดแทน";
+  if (/no active price/i.test(m)) return "วัสดุนี้ยังไม่มีราคา";
+  if (/household not active/i.test(m)) return "บ้านนี้ไม่ได้อยู่ในสถานะใช้งาน";
+  if (/not a draft|already voided|only pending|only pending\/approved/i.test(m)) return "สถานะเปลี่ยนไปแล้ว กดอัปเดตแล้วลองใหม่";
+  if (/ledger balance lower/i.test(m)) return "ยอดในกระเป๋าไม่พอจ่าย";
+  return "ไม่สำเร็จ: " + m;
+}
+
+// ----- dialog -----
+let dlgDone = null;
+function dlg(title, body, okLabel, getVal) {
+  return new Promise((res) => {
+    const er = h("p", { class: "err" });
+    const done = (v) => { $("dlg").hidden = true; dlgDone = null; res(v); };
+    dlgDone = done;
+    const btns = [h("button", { type: "button", class: "btn g", text: "ปิด", onclick: () => done(null) })];
+    if (okLabel) btns.push(h("button", { type: "button", class: "btn", text: okLabel, onclick: () => {
+      const v = getVal ? getVal() : true;
+      if (v && v.error) { er.textContent = v.error; return; }
+      done(v);
+    } }));
+    $("dlgBody").replaceChildren(h("h2", { text: title }), body, er, h("div", { class: "two" }, btns));
+    $("dlg").hidden = false;
+  });
+}
+async function searchHouses(q) {
+  q = (q || "").replace(/[,()%*\\]/g, " ").trim();
+  let r = sb.from("households").select("id,household_code,household_name,contact_name,village").eq("status", "active").order("created_at", { ascending: false }).limit(15);
+  if (q) r = r.or(`household_code.ilike.*${q}*,household_name.ilike.*${q}*,contact_name.ilike.*${q}*`);
+  return must(await r);
+}
+function pickHouse() {
+  const q = h("input", { type: "text", placeholder: "พิมพ์รหัสหรือชื่อบ้าน", autocomplete: "off" });
+  const list = h("div", { class: "rows" });
+  let t;
+  const run = async () => {
+    try {
+      const r = await searchHouses(q.value);
+      list.replaceChildren(...(r.length ? r.map((x) => h("button", { type: "button", class: "row", onclick: () => dlgDone && dlgDone(x) },
+        h("div", { class: "main" }, h("div", { class: "t", text: x.household_code + "  " + x.household_name }), h("div", { class: "s", text: [x.contact_name, x.village].filter(Boolean).join("  ") })))) : [h("p", { class: "empty", text: "ไม่พบบ้าน" })]));
+    } catch (e) { toast(thErr(e), 1); }
+  };
+  q.oninput = () => { clearTimeout(t); t = setTimeout(run, 250); };
+  run();
+  return dlg("เลือกบ้าน", h("div", { class: "stack" }, q, list), null);
+}
+async function newHouse(contact) {
+  const n = h("input", { type: "text", maxlength: "80", placeholder: "เช่น บ้านลุงสมชาย" });
+  const c = h("input", { type: "text", value: contact || "" });
+  const p = h("input", { type: "tel", inputmode: "tel" });
+  const v = h("select", null, [h("option", { value: "", text: "ไม่ระบุหมู่บ้าน" }), ...S.villages.map((x) => h("option", { value: x.id, text: x.village_name }))]);
+  const a = h("input", { type: "text", placeholder: "เช่น ใกล้วัด ซอย 3" });
+  const f = await dlg("สร้างบ้านใหม่", h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน", v), fld("หมายเหตุที่อยู่", a)), "สร้างบ้าน",
+    () => n.value.trim() ? { name: n.value.trim(), contact: c.value.trim(), phone: p.value.trim(), village: v.value || null, note: a.value.trim() } : { error: "กรอกชื่อบ้าน" });
+  if (!f) return null;
+  const { data, error } = await sb.rpc("create_household", { p_name: f.name, p_contact: f.contact, p_phone: f.phone, p_village_id: f.village, p_address_note: f.note });
+  if (error) { console.error(error); toast(thErr(error), 1); return null; }
+  toast("สร้างบ้าน " + data.household_code + " แล้ว");
+  return data;
+}
+
+// ----- auth + data -----
+function showState(...n) { $("app").hidden = true; const s = $("state"); s.hidden = false; s.replaceChildren(...n.flat().filter(Boolean)); }
+function showFail(t, d, label, fn) { showState(h("h2", { text: t }), d ? h("p", { text: d }) : null, label ? h("button", { class: "btn", type: "button", text: label, onclick: fn }) : null); }
+function relogin() { try { liff.logout(); } catch (e) { /* ignore */ } liff.login({ redirectUri: location.href }); }
+async function authenticate() {
+  if (String(CONFIG.LIFF_ID).startsWith("ใส่") || String(CONFIG.SUPABASE_ANON_KEY).startsWith("ใส่")) throw new Error("ยังไม่ได้ใส่ LIFF_ID หรือ SUPABASE_ANON_KEY ใน CONFIG");
+  await liff.init({ liffId: CONFIG.LIFF_ID });
+  if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return null; }
+  const dec = liff.getDecodedIDToken();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && dec && session.user?.user_metadata?.line_user_id === dec.sub) return session.user;
+  const idToken = liff.getIDToken();
+  if (!idToken) { relogin(); return null; }
+  const res = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/" + CONFIG.AUTH_FUNCTION, { method: "POST",
+    headers: { "Content-Type": "application/json", apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: "Bearer " + CONFIG.SUPABASE_ANON_KEY }, body: JSON.stringify({ id_token: idToken }) });
+  const out = await res.json().catch(() => ({}));
+  if (res.status === 401) { const e = new Error("auth_expired"); e.code = "auth_expired"; throw e; }
+  if (!res.ok || !out.token_hash) throw new Error("auth: " + (out.error || res.status));
+  const { data, error } = await sb.auth.verifyOtp({ token_hash: out.token_hash, type: "magiclink" });
+  if (error) throw error;
+  return data.user;
+}
+async function loadAll() {
+  const [mats, prices, vil, rec, pays, unl] = await Promise.all([
+    sb.from("materials").select("id,material_name,unit").eq("is_active", true).order("material_name"),
+    sb.from("material_prices").select("material_id,buy_price").is("effective_to", null),
+    sb.from("villages").select("id,village_name").eq("is_active", true).order("village_code"),
+    sb.from("purchase_transactions").select("id,receipt_no,status,gross_total,confirmed_at,created_at,households(household_code,household_name)").in("status", ["confirmed", "voided"]).order("created_at", { ascending: false }).limit(12),
+    sb.from("payout_requests").select("id,amount,payout_method,payout_reference,status,requested_at,staff_note,households(household_code,household_name)").order("requested_at", { ascending: false }).limit(40),
+    sb.from("profiles").select("id,display_name,picture_url,created_at").is("household_id", null).order("created_at", { ascending: false }).limit(30),
+  ]);
+  S.mats = must(mats) || [];
+  S.price = new Map((must(prices) || []).map((p) => [p.material_id, Number(p.buy_price)]));
+  S.villages = must(vil) || [];
+  S.recent = must(rec) || [];
+  S.pays = must(pays) || [];
+  S.unlinked = must(unl) || [];
+  renderAll();
+}
+async function refresh() { try { await loadAll(); } catch (e) { console.error(e); toast("อัปเดตไม่สำเร็จ", 1); } }
+
+// ----- purchases -----
+const newLine = () => ({ m: "", w: "", p: "" });
+function renderBuy() {
+  const root = $("tab-buy");
+  const recent = [h("h2", { class: "sec", text: "ใบรับซื้อล่าสุด" }), S.recent.length ? h("div", { class: "rows" }, S.recent.map((p) => h("div", { class: "row" },
+    h("div", { class: "main" }, h("div", { class: "t num", text: p.receipt_no }), h("div", { class: "s", text: (p.households ? p.households.household_code + " " + p.households.household_name : "") + "  " + dt(p.confirmed_at || p.created_at) })),
+    h("div", null, h("div", { class: "a num", text: "฿" + baht(p.gross_total) }), chip(p.status)),
+    p.status === "confirmed" ? h("button", { class: "btn d s", type: "button", text: "ยกเลิก", onclick: () => voidBuy(p) }) : null))) : h("p", { class: "empty", text: "ยังไม่มีใบรับซื้อ" })];
+  if (B.done) {
+    root.replaceChildren(h("div", { class: "ok" }, h("span", { text: "บันทึกแล้ว " + B.done.no }), h("b", { class: "num", text: "฿" + baht(B.done.total) }), h("span", { text: B.done.name })),
+      h("div", { class: "pad" }, h("button", { class: "btn", type: "button", text: "รับซื้อรายการต่อไป", onclick: () => { B.done = null; renderBuy(); } })), recent);
+    return;
+  }
+  if (!B.house) {
+    root.replaceChildren(h("h2", { class: "sec", text: "รับซื้อ" }), h("div", { class: "pad" }, h("button", { class: "btn", type: "button", text: "เลือกบ้านที่รับซื้อ",
+      onclick: async () => { const x = await pickHouse(); if (x) { B.house = x; B.lines = [newLine()]; renderBuy(); } } })), recent);
+    return;
+  }
+  const total = h("b", { class: "num", text: "฿0.00" });
+  const upd = () => { total.textContent = "฿" + baht(B.lines.reduce((s, l) => s + (parseFloat(l.w) || 0) * (parseFloat(l.p) || 0), 0)); };
+  const rows = B.lines.map((l, i) => {
+    const sel = h("select", null, [h("option", { value: "", text: "เลือกวัสดุ" }), ...S.mats.map((m) => h("option", { value: m.id, text: m.material_name + " (" + (UNIT[m.unit] || m.unit) + ")" }))]);
+    sel.value = l.m;
+    const w = h("input", { type: "text", inputmode: "decimal", placeholder: "น้ำหนัก", value: l.w });
+    const p = h("input", { type: "text", inputmode: "decimal", placeholder: "ราคา/หน่วย", value: l.p });
+    sel.onchange = () => { l.m = sel.value; const c = S.price.get(l.m); l.p = c != null ? String(c) : ""; p.value = l.p; upd(); };
+    w.oninput = () => { l.w = w.value; upd(); };
+    p.oninput = () => { l.p = p.value; upd(); };
+    return h("div", { class: "bl" }, sel, h("div", { class: "two" }, w, p),
+      B.lines.length > 1 ? h("button", { class: "btn g s", type: "button", text: "ลบบรรทัดนี้", onclick: () => { B.lines.splice(i, 1); renderBuy(); } }) : null);
+  });
+  upd();
+  root.replaceChildren(
+    h("div", { class: "house" }, h("div", null, h("small", { text: B.house.household_code }), h("b", { text: B.house.household_name })),
+      h("button", { class: "btn g s", style: "color:#fff;border-color:#4d7a6e", type: "button", text: "เปลี่ยนบ้าน", onclick: () => { B.house = null; B.lines = []; renderBuy(); } })),
+    rows,
+    h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ เพิ่มวัสดุ", onclick: () => { B.lines.push(newLine()); renderBuy(); } })),
+    h("div", { class: "tot" }, h("span", { text: "รวม" }), total),
+    h("div", { class: "pad" }, h("button", { class: "btn", type: "button", text: "บันทึกและยืนยัน", onclick: submitBuy })),
+    recent);
+}
+async function submitBuy() {
+  if (B.busy) return;
+  const items = [];
+  for (const l of B.lines) {
+    const w = parseFloat(l.w), p = parseFloat(l.p);
+    if (!l.m || !(w > 0) || !(p >= 0)) return toast("กรอกวัสดุ น้ำหนัก และราคาให้ครบทุกบรรทัด", 1);
+    items.push({ material_id: l.m, weight: w, unit_price: p });
+  }
+  const total = items.reduce((s, i) => s + money(i.weight * i.unit_price), 0);
+  const name = (id) => (S.mats.find((m) => m.id === id) || {}).material_name || "";
+  const ok = await dlg("ยืนยันรับซื้อ", h("div", { class: "stack" }, h("p", { text: B.house.household_code + " " + B.house.household_name }),
+    items.map((i) => h("div", { class: "s", text: `${name(i.material_id)} ${i.weight} × ${baht(i.unit_price)} = ${baht(i.weight * i.unit_price)}` })),
+    h("b", { class: "num", style: "font-size:28px", text: "฿" + baht(total) }), h("p", { class: "hint", style: "margin:0", text: "ยืนยันแล้วยอดเข้ากระเป๋าสมาชิกทันที" })), "ยืนยันรับซื้อ");
+  if (!ok) return;
+  B.busy = true;
+  try {
+    const c = await sb.rpc("create_purchase", { p_household_id: B.house.id, p_items: items });
+    if (c.error) throw c.error;
+    const f = await sb.rpc("confirm_purchase", { p_transaction_id: c.data });
+    if (f.error) { await sb.rpc("void_purchase", { p_transaction_id: c.data, p_reason: "confirm failed" }); throw f.error; }
+    const r = must(await sb.from("purchase_transactions").select("receipt_no,gross_total").eq("id", c.data).single());
+    B.done = { no: r.receipt_no, total: r.gross_total, name: B.house.household_code + " " + B.house.household_name };
+    B.house = null; B.lines = [];
+    await refresh();
+  } catch (e) { console.error(e); toast(thErr(e), 1); } finally { B.busy = false; }
+}
+async function voidBuy(p) {
+  const why = h("input", { type: "text", maxlength: "100", placeholder: "เหตุผลที่ยกเลิก" });
+  const v = await dlg("ยกเลิกใบรับซื้อ", h("div", { class: "stack" }, h("p", { text: p.receipt_no + "  ฿" + baht(p.gross_total) }), h("p", { class: "hint", style: "margin:0", text: "ระบบจะหักยอดนี้ออกจากกระเป๋าสมาชิก" }), fld("เหตุผล", why)), "ยืนยันยกเลิก",
+    () => why.value.trim() ? why.value.trim() : { error: "ต้องใส่เหตุผล" });
+  if (!v) return;
+  const { error } = await sb.rpc("void_purchase", { p_transaction_id: p.id, p_reason: v });
+  if (error) { toast(thErr(error), 1); return; }
+  toast("ยกเลิกแล้ว"); await refresh();
+}
+
+// ----- payouts -----
+function payCard(p) {
+  const hs = p.households || {};
+  const open = p.status === "pending" || p.status === "approved";
+  return h("div", { class: "card" },
+    h("div", { class: "hd" }, h("span", { text: (hs.household_code || "") + " " + (hs.household_name || "") }), chip(p.status)),
+    h("div", { class: "big num", text: "฿" + baht(p.amount) }),
+    h("div", { class: "s", text: METHOD[p.payout_method] + (p.payout_reference ? "  " + p.payout_reference : "") }),
+    h("div", { class: "s", text: dt(p.requested_at) + (p.staff_note ? "  หมายเหตุ: " + p.staff_note : "") }),
+    open ? h("div", { class: "acts" },
+      p.status === "pending" ? h("button", { class: "btn s", style: "background:#dce8f7;color:#1c4585", type: "button", text: "อนุมัติ", onclick: () => act(p, "approve") }) : null,
+      h("button", { class: "btn s", type: "button", text: "จ่ายแล้ว", onclick: () => act(p, "paid") }),
+      h("button", { class: "btn d s", type: "button", text: "ปฏิเสธ", onclick: () => act(p, "reject") })) : null);
+}
+async function act(p, action) {
+  const ref = h("input", { type: "text", maxlength: "60", placeholder: "เลขอ้างอิงการโอน (ถ้ามี)" });
+  const note = h("input", { type: "text", maxlength: "120", placeholder: action === "reject" ? "เหตุผล (บังคับ)" : "หมายเหตุถึงสมาชิก (ถ้ามี)" });
+  const T = { approve: ["อนุมัติคำขอ", "อนุมัติ"], paid: ["ยืนยันว่าจ่ายเงินแล้ว", "ยืนยันจ่ายแล้ว"], reject: ["ปฏิเสธคำขอ", "ปฏิเสธ"] }[action];
+  const hs = p.households || {};
+  const v = await dlg(T[0], h("div", { class: "stack" }, h("p", { text: (hs.household_code || "") + " " + (hs.household_name || "") + "  ฿" + baht(p.amount) }),
+    action === "paid" ? [h("p", { class: "hint", style: "margin:0", text: "ระบบจะหักยอดออกจากกระเป๋าทันที" }), fld("เลขอ้างอิง", ref)] : null,
+    fld("หมายเหตุ (สมาชิกจะเห็น)", note)), T[1],
+    () => (action === "reject" && !note.value.trim()) ? { error: "ต้องใส่เหตุผล" } : { ref: ref.value.trim(), note: note.value.trim() });
+  if (!v) return;
+  const { error } = await sb.rpc("process_payout", { p_payout_id: p.id, p_action: action, p_reference: v.ref || null, p_note: v.note || null });
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("บันทึกแล้ว"); await refresh();
+}
+function renderPay() {
+  const open = S.pays.filter((p) => p.status === "pending" || p.status === "approved");
+  const done = S.pays.filter((p) => !(p.status === "pending" || p.status === "approved")).slice(0, 10);
+  $("tbPay").textContent = "ถอนเงิน" + (open.length ? " (" + open.length + ")" : "");
+  $("tab-pay").replaceChildren(
+    h("h2", { class: "sec", text: "รอดำเนินการ" }), open.length ? open.map(payCard) : h("p", { class: "empty", text: "ไม่มีคำขอค้าง" }),
+    h("h2", { class: "sec", text: "ล่าสุด" }), done.length ? done.map(payCard) : h("p", { class: "empty", text: "ยังไม่มีประวัติ" }));
+}
+
+// ----- members -----
+async function linkTo(pid, hid) {
+  const { error } = await sb.rpc("link_member_household", { p_profile_id: pid, p_household_id: hid });
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("ผูกบัญชีกับบ้านแล้ว"); await refresh();
+}
+function renderMem() {
+  $("tbMem").textContent = "สมาชิก" + (S.unlinked.length ? " (" + S.unlinked.length + ")" : "");
+  $("tab-mem").replaceChildren(
+    h("h2", { class: "sec", text: "รอผูกกับบ้าน" }),
+    S.unlinked.length ? h("div", { class: "rows" }, S.unlinked.map((u) => h("div", { class: "row", style: "flex-wrap:wrap" },
+      u.picture_url ? h("img", { class: "av", src: u.picture_url, alt: "" }) : h("div", { class: "av" }),
+      h("div", { class: "main" }, h("div", { class: "t", text: u.display_name || "(ไม่มีชื่อ)" }), h("div", { class: "s", text: "สมัครเมื่อ " + dt(u.created_at) })),
+      h("div", { class: "acts", style: "width:100%;margin:0" },
+        h("button", { class: "btn s", type: "button", text: "ผูกบ้านที่มีอยู่", onclick: async () => { const x = await pickHouse(); if (x) await linkTo(u.id, x.id); } }),
+        h("button", { class: "btn g s", type: "button", text: "สร้างบ้านใหม่และผูก", onclick: async () => { const r = await newHouse(u.display_name); if (r) await linkTo(u.id, r.id); } }))))) : h("p", { class: "empty", text: "ไม่มีสมาชิกที่รอผูก" }),
+    h("h2", { class: "sec", text: "บ้านใหม่" }),
+    h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ สร้างบ้านใหม่ (ยังไม่ผูกสมาชิก)", onclick: async () => { await newHouse(""); } })));
+}
+
+// ----- boot -----
+function renderAll() { renderBuy(); renderPay(); renderMem(); }
+function showTab(t) {
+  S.tab = t;
+  document.querySelectorAll(".tb button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
+  ["buy", "pay", "mem"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
+  window.scrollTo(0, 0);
+}
+async function start() {
+  showState(h("p", { text: "กำลังเปิดหลังบ้าน..." }));
+  try {
+    if (!S.user) { const u = await authenticate(); if (!u) return; S.user = u; }
+    const r = must(await sb.from("user_roles").select("role").eq("user_id", S.user.id).maybeSingle());
+    if (!r || r.role !== "admin") { showFail("บัญชีนี้ไม่มีสิทธิ์เข้าหน้านี้", "ต้องเป็นผู้ดูแล (admin)", null); return; }
+    await loadAll();
+    $("state").hidden = true; $("app").hidden = false; showTab(S.tab);
+  } catch (e) {
+    console.error(e);
+    if (e && e.code === "auth_expired") showFail("ล็อกอินหมดอายุ", "เปิดผ่าน LINE ใหม่อีกครั้ง", "ล็อกอิน LINE ใหม่", relogin);
+    else showFail("เปิดไม่สำเร็จ", e && e.message ? e.message : "", "ลองใหม่", start);
+  }
+}
+document.querySelectorAll(".tb button").forEach((b) => { b.onclick = () => showTab(b.dataset.t); });
+$("rf").onclick = async () => { await refresh(); toast("อัปเดตแล้ว"); };
+$("dlg").addEventListener("click", (ev) => { if (ev.target === $("dlg") && dlgDone) dlgDone(null); });
+start();
+</script>
+</body>
+</html>
