@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ทดสอบ LINE Login</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Noto Sans Thai", sans-serif; margin: 0; padding: 16px; background: #f5f6f8; color: #1a1a1a; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .log div { font-size: 14px; padding: 2px 0; }
+  .ok { color: #0a7d33; }
+  .err { color: #c0262d; }
+  .label { font-size: 12px; color: #666; margin-top: 8px; }
+  .val { font-size: 15px; word-break: break-all; user-select: all; }
+  button { font-size: 15px; padding: 10px 14px; border: 0; border-radius: 8px; background: #06c755; color: #fff; margin-top: 10px; }
+  img { width: 56px; height: 56px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<h1>ทดสอบ LINE Login (เฟส 2)</h1>
+
+<div class="card log" id="log"></div>
+
+<div class="card" id="result" hidden>
+  <img id="pic" alt="" hidden>
+  <div class="label">ชื่อใน LINE</div>
+  <div class="val" id="name"></div>
+  <div class="label">Supabase User UID (ใช้ตอนตั้งสิทธิ์/ผูกบ้าน)</div>
+  <div class="val" id="uid"></div>
+  <div class="label">สถานะผูกบ้าน</div>
+  <div class="val" id="household"></div>
+</div>
+
+<button id="retry" hidden>ล็อกอิน LINE ใหม่</button>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ===== ใส่ค่า 3 ตัวนี้ =====
+const CONFIG = {
+  LIFF_ID: "ใส่-LIFF-ID",
+  SUPABASE_URL: "https://xxxxxxxx.supabase.co",
+  SUPABASE_ANON_KEY: "ใส่-anon-หรือ-publishable-key", // ห้ามใส่ service_role
+};
+// ==========================
+
+const logBox = document.getElementById("log");
+function log(msg, cls) {
+  const d = document.createElement("div");
+  d.textContent = msg;
+  if (cls) d.className = cls;
+  logBox.appendChild(d);
+}
+function showRetry() {
+  const b = document.getElementById("retry");
+  b.hidden = false;
+  b.onclick = () => { try { liff.logout(); } catch (e) {} liff.login({ redirectUri: location.href }); };
+}
+
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+async function main() {
+  try {
+    if (CONFIG.LIFF_ID.startsWith("ใส่")) throw new Error("ยังไม่ได้ใส่ LIFF_ID ใน CONFIG");
+
+    log("เริ่ม LIFF...");
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+
+    if (!liff.isLoggedIn()) {
+      log("ยังไม่ได้ล็อกอิน LINE กำลังพาไปล็อกอิน...");
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+    log("ล็อกอิน LINE แล้ว", "ok");
+
+    const idToken = liff.getIDToken();
+    if (!idToken) throw new Error("ไม่ได้ ID Token: ตรวจว่า LIFF เปิด scope openid และ profile");
+
+    log("กำลังให้เซิร์ฟเวอร์ตรวจ token...");
+    const res = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/line-auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": CONFIG.SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + CONFIG.SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    const out = await res.json().catch(() => ({}));
+
+    if (res.status === 401) {
+      log("ID Token ไม่ผ่าน (อาจหมดอายุ หรือ LINE_CHANNEL_ID ไม่ตรง)", "err");
+      showRetry();
+      return;
+    }
+    if (!res.ok || !out.token_hash) {
+      throw new Error("line-auth ผิดพลาด: " + (out.error || res.status) + (out.detail ? " (" + out.detail + ")" : ""));
+    }
+    log("เซิร์ฟเวอร์ตรวจ token ผ่าน", "ok");
+
+    const { data, error } = await sb.auth.verifyOtp({ token_hash: out.token_hash, type: "magiclink" });
+    if (error) throw error;
+    const user = data.user;
+    log("ได้ session จาก Supabase แล้ว", "ok");
+
+    const { data: prof, error: pErr } = await sb
+      .from("profiles")
+      .select("display_name, picture_url, household_id")
+      .eq("id", user.id)
+      .single();
+    if (pErr) throw pErr;
+
+    document.getElementById("name").textContent = prof.display_name || "(ไม่มีชื่อ)";
+    document.getElementById("uid").textContent = user.id;
+    document.getElementById("household").textContent = prof.household_id
+      ? "ผูกบ้านแล้ว"
+      : "ยังไม่ผูกบ้าน (รอคุณผูกในหน้าแอดมิน)";
+    if (prof.picture_url) {
+      const img = document.getElementById("pic");
+      img.src = prof.picture_url;
+      img.hidden = false;
+    }
+    document.getElementById("result").hidden = false;
+    log("เสร็จ ระบบล็อกอินทำงานครบ", "ok");
+  } catch (e) {
+    log("ผิดพลาด: " + (e && e.message ? e.message : e), "err");
+    showRetry();
+  }
+}
+main();
+</script>
+</body>
+</html>
