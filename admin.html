@@ -1,4 +1,4 @@
-no<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="utf-8">
@@ -80,6 +80,8 @@ const CONFIG = {
 // ================================================================
 const $ = (id) => document.getElementById(id);
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const _rc = Element.prototype.replaceChildren;
+Element.prototype.replaceChildren = function (...k) { return _rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); };
 const S = { user: null, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
 const B = { house: null, lines: [], done: null, busy: false };
 const UNIT = { kg: "กก.", piece: "ชิ้น", bag: "ถุง" };
