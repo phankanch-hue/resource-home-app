@@ -523,7 +523,7 @@ function renderHistory() {
     : (state.payouts.length ? state.payouts.map(payoutSlip) : [h("p", { class: "empty", text: "ยังไม่เคยขอรับเงิน" })]);
   $("tab-history").replaceChildren(
     h("div", { class: "seg", role: "tablist" }, segBtn("purchases", "รับซื้อ"), segBtn("payouts", "รับเงิน")),
-    list
+    ...list
   );
 }
 
