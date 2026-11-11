@@ -38,7 +38,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
 .tot{margin:6px 16px 12px;display:flex;justify-content:space-between;align-items:baseline;font-weight:600}.tot b{font-size:30px}
 .ok{margin:16px;padding:18px;background:#d6eddf;border-radius:16px;text-align:center}.ok b{display:block;font-size:30px}
 .tb{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:13px;line-height:1.2;padding:0 2px;color:var(--muted)}
+.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:12px;line-height:1.2;padding:0 2px;color:var(--muted)}
 .tb button[aria-selected=true]{color:var(--glass);font-weight:600}
 .tb button[aria-selected=true]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;background:var(--amber);border-radius:0 0 3px 3px}
 .bd{position:fixed;inset:0;z-index:50;background:rgba(10,20,16,.5);display:flex;align-items:flex-end;justify-content:center}
@@ -47,6 +47,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab) + env(safe-area-inset-bottom) + 14px);z-index:60;max-width:90vw;padding:10px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:14px;text-align:center}.toast.e{background:var(--neg)}
 .state{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:12px;padding:24px;text-align:center;max-width:420px;margin:0 auto}.state p{margin:0;color:var(--muted)}.state .btn{width:auto;padding:0 22px}
 .av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#dfe5df}
+.seg{display:flex;margin:12px 16px;padding:3px;background:#e1e7e1;border-radius:12px}.seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 0;font-size:14px;color:var(--muted)}.seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
 </style>
 </head>
 <body>
@@ -59,6 +60,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
     <section id="tab-mem" hidden></section>
     <section id="tab-pk" hidden></section>
     <section id="tab-pr" hidden></section>
+    <section id="tab-ov" hidden></section>
   </main>
   <nav class="tb" role="tablist">
     <button type="button" data-t="buy" aria-selected="true">รับซื้อ</button>
@@ -66,6 +68,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
     <button type="button" data-t="mem" aria-selected="false" id="tbMem">สมาชิก</button>
     <button type="button" data-t="pk" aria-selected="false" id="tbPk">นัดรับ</button>
     <button type="button" data-t="pr" aria-selected="false">ราคา</button>
+    <button type="button" data-t="ov" aria-selected="false">สรุป</button>
   </nav>
 </div>
 <div class="bd" id="dlg" hidden><div class="sh" id="dlgBody"></div></div>
@@ -86,7 +89,7 @@ const $ = (id) => document.getElementById(id);
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const _rc = Element.prototype.replaceChildren;
 Element.prototype.replaceChildren = function (...k) { return _rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); };
-const S = { user: null, allMats: [], pk: [], min: 50, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
+const S = { rp: "today", rep: null, hq: "", user: null, allMats: [], pk: [], min: 50, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
 const B = { pickup: null, house: null, lines: [], done: null, busy: false };
 const UNIT = { kg: "กก.", piece: "ชิ้น", bag: "ถุง" };
 const METHOD = { cash: "เงินสด", bank_transfer: "โอนธนาคาร", promptpay: "พร้อมเพย์" };
@@ -120,6 +123,7 @@ function thErr(e) {
   if (/household not active/i.test(m)) return "บ้านนี้ไม่ได้อยู่ในสถานะใช้งาน";
   if (/not a draft|already voided|only pending|only pending\/approved/i.test(m)) return "สถานะเปลี่ยนไปแล้ว กดอัปเดตแล้วลองใหม่";
   if (/ledger balance lower/i.test(m)) return "ยอดในกระเป๋าไม่พอจ่าย";
+  if (/debit exceeds/i.test(m)) return "ปรับลดเกินยอดที่ถอนได้ของบ้านนี้";
   return "ไม่สำเร็จ: " + m;
 }
 
@@ -220,7 +224,7 @@ async function loadAll() {
   { const x = Number(must(set)?.value); S.min = x > 0 ? x : 50; }
   renderAll();
 }
-async function refresh() { try { await loadAll(); } catch (e) { console.error(e); toast("อัปเดตไม่สำเร็จ", 1); } }
+async function refresh() { try { await loadAll(); if (S.tab === "ov") loadReport(); } catch (e) { console.error(e); toast("อัปเดตไม่สำเร็จ", 1); } }
 
 // ----- purchases -----
 const newLine = () => ({ m: "", w: "", p: "" });
@@ -344,6 +348,9 @@ async function linkTo(pid, hid) {
   toast("ผูกบัญชีกับบ้านแล้ว"); await refresh();
 }
 function renderMem() {
+  const hq = h("input", { type: "text", placeholder: "ค้นหารหัสหรือชื่อบ้าน", autocomplete: "off", value: S.hq });
+  const hl = h("div", { class: "rows" });
+  memSearch(hq, hl);
   $("tbMem").textContent = "สมาชิก" + (S.unlinked.length ? " (" + S.unlinked.length + ")" : "");
   $("tab-mem").replaceChildren(
     h("h2", { class: "sec", text: "รอผูกกับบ้าน" }),
@@ -353,6 +360,7 @@ function renderMem() {
       h("div", { class: "acts", style: "width:100%;margin:0" },
         h("button", { class: "btn s", type: "button", text: "ผูกบ้านที่มีอยู่", onclick: async () => { const x = await pickHouse(); if (x) await linkTo(u.id, x.id); } }),
         h("button", { class: "btn g s", type: "button", text: "สร้างบ้านใหม่และผูก", onclick: async () => { const r = await newHouse(u.display_name); if (r) await linkTo(u.id, r.id); } }))))) : h("p", { class: "empty", text: "ไม่มีสมาชิกที่รอผูก" }),
+    h("h2", { class: "sec", text: "บ้านทั้งหมด" }), h("div", { class: "pad", style: "margin-bottom:10px" }, hq), hl,
     h("h2", { class: "sec", text: "บ้านใหม่" }),
     h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ สร้างบ้านใหม่ (ยังไม่ผูกสมาชิก)", onclick: async () => { await newHouse(""); } })));
 }
@@ -440,12 +448,121 @@ function renderPr() {
     h("div", { class: "pad", style: "margin-top:12px" }, h("button", { class: "btn g", type: "button", text: "+ เพิ่มวัสดุใหม่", onclick: addMat })));
 }
 
+// ----- house detail -----
+function memSearch(hq, hl) {
+  let t;
+  const run = async () => {
+    try {
+      S.hq = hq.value;
+      const q = (hq.value || "").replace(/[,()%*\\]/g, " ").trim();
+      let r = sb.from("households").select("id,household_code,household_name,village,status").order("household_code", { ascending: false }).limit(20);
+      if (q) r = r.or(`household_code.ilike.*${q}*,household_name.ilike.*${q}*,contact_name.ilike.*${q}*`);
+      const d = must(await r);
+      hl.replaceChildren(d.length ? d.map((x) => h("button", { class: "row", type: "button", onclick: () => houseDetail(x.id) },
+        h("div", { class: "main" }, h("div", { class: "t", text: x.household_code + "  " + x.household_name }), h("div", { class: "s", text: x.village || "" })),
+        x.status !== "active" ? h("span", { class: "chip st-voided", text: "ระงับ" }) : null)) : h("p", { class: "empty", text: "ไม่พบบ้าน" }));
+    } catch (e) { toast(thErr(e), 1); }
+  };
+  hq.oninput = () => { clearTimeout(t); t = setTimeout(run, 250); };
+  run();
+}
+async function adjustDlg(hh) {
+  const a = h("input", { type: "text", inputmode: "decimal", placeholder: "เช่น 50 หรือ -50" });
+  const why = h("input", { type: "text", maxlength: "100", placeholder: "เหตุผล (บังคับ)" });
+  const v = await dlg("ปรับยอด " + hh.household_code, h("div", { class: "stack" }, fld("จำนวนเงิน (+ เพิ่ม / - ลด)", a), fld("เหตุผล (สมาชิกจะเห็น)", why)), "ยืนยันปรับยอด",
+    () => { const x = parseFloat(a.value); return !x ? { error: "ใส่จำนวนเงินที่ไม่ใช่ 0" } : !why.value.trim() ? { error: "ต้องใส่เหตุผล" } : { x, why: why.value.trim() }; });
+  if (!v) return;
+  const { error } = await sb.rpc("adjust_wallet", { p_household_id: hh.id, p_amount: v.x, p_reason: v.why });
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("ปรับยอดแล้ว"); await refresh();
+}
+async function houseDetail(id) {
+  for (;;) {
+    let hh, bal, mem, pur, pay;
+    try {
+      [hh, bal, mem, pur, pay] = (await Promise.all([
+        sb.from("households").select("id,household_code,household_name,contact_name,phone,village,status").eq("id", id).single(),
+        sb.from("wallet_balances").select("*").eq("household_id", id).maybeSingle(),
+        sb.from("profiles").select("id,display_name").eq("household_id", id),
+        sb.from("purchase_transactions").select("receipt_no,status,gross_total").eq("household_id", id).in("status", ["confirmed", "voided"]).order("created_at", { ascending: false }).limit(5),
+        sb.from("payout_requests").select("amount,status,requested_at").eq("household_id", id).order("requested_at", { ascending: false }).limit(5),
+      ])).map((r) => must(r));
+    } catch (e) { console.error(e); toast(thErr(e), 1); return; }
+    const b = bal || {};
+    const act = (a, t, cls, extra) => h("button", { class: "btn s " + cls, type: "button", text: t, onclick: () => dlgDone && dlgDone({ a, ...extra }) });
+    const body = h("div", { class: "stack" },
+      h("div", { class: "s", text: [hh.contact_name, hh.phone, hh.village].filter(Boolean).join("  ") }),
+      h("div", { class: "card", style: "margin:0" }, h("div", { class: "hd", text: "ยอดที่ถอนได้" }), h("div", { class: "big num", text: "฿" + baht(b.available_balance) }),
+        h("div", { class: "s", text: `สะสม ฿${baht(b.total_earned)}  รับแล้ว ฿${baht(b.total_paid)}  รอจ่าย ฿${baht(b.reserved_amount)}` })),
+      h("div", { class: "acts", style: "margin:0" }, act("adjust", "ปรับยอด", ""), act("status", hh.status === "active" ? "ระงับบ้าน" : "เปิดใช้งานบ้าน", "g")),
+      h("b", { text: "สมาชิก LINE ที่ผูกอยู่" }),
+      mem.length ? mem.map((m) => h("div", { class: "row", style: "padding:6px 0" }, h("div", { class: "main", text: m.display_name || "(ไม่มีชื่อ)" }), act("unlink", "ยกเลิกผูก", "d", { pid: m.id }))) : h("div", { class: "s", text: "ยังไม่มีสมาชิกผูกอยู่" }),
+      h("b", { text: "รับซื้อล่าสุด" }), pur.length ? pur.map((p) => h("div", { class: "s num", text: `${p.receipt_no}  ฿${baht(p.gross_total)}  ${STATUS[p.status]}` })) : h("div", { class: "s", text: "ยังไม่มี" }),
+      h("b", { text: "รับเงินล่าสุด" }), pay.length ? pay.map((p) => h("div", { class: "s num", text: `${dt(p.requested_at)}  ฿${baht(p.amount)}  ${STATUS[p.status]}` })) : h("div", { class: "s", text: "ยังไม่มี" }));
+    const r = await dlg(hh.household_code + "  " + hh.household_name, body, null);
+    if (!r) return;
+    if (r.a === "adjust") await adjustDlg(hh);
+    else if (r.a === "status") {
+      const { error } = await sb.from("households").update({ status: hh.status === "active" ? "inactive" : "active" }).eq("id", id);
+      if (error) { toast(thErr(error), 1); } else { toast("บันทึกแล้ว"); await refresh(); }
+    } else if (r.a === "unlink") {
+      if (await dlg("ยกเลิกผูกสมาชิก", h("p", { text: "ยกเลิกการผูกบัญชี LINE นี้กับบ้านนี้?" }), "ยืนยัน", () => true)) {
+        const { error } = await sb.rpc("link_member_household", { p_profile_id: r.pid, p_household_id: null });
+        if (error) toast(thErr(error), 1); else { toast("ยกเลิกผูกแล้ว"); await refresh(); }
+      }
+    }
+  }
+}
+
+// ----- overview -----
+function range(k) {
+  const day = 864e5, bk = (x) => new Date(x + "T00:00:00+07:00");
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const [y, m] = today.split("-").map(Number), t0 = bk(today);
+  const mm = (yy, mo) => bk(yy + "-" + String(mo).padStart(2, "0") + "-01");
+  if (k === "today") return [t0, new Date(+t0 + day)];
+  if (k === "7d") return [new Date(+t0 - 6 * day), new Date(+t0 + day)];
+  if (k === "month") return [mm(y, m), m === 12 ? mm(y + 1, 1) : mm(y, m + 1)];
+  return [m === 1 ? mm(y - 1, 12) : mm(y, m - 1), mm(y, m)];
+}
+async function loadReport() {
+  const [f, t] = range(S.rp);
+  S.rep = null; renderOv();
+  const { data, error } = await sb.rpc("report_summary", { p_from: f.toISOString(), p_to: t.toISOString() });
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  S.rep = data; renderOv();
+}
+async function newVillage() {
+  const n = h("input", { type: "text", maxlength: "60" }), a = h("input", { type: "text", placeholder: "ตำบล" }), d = h("input", { type: "text", placeholder: "อำเภอ" }), pv = h("input", { type: "text", placeholder: "จังหวัด" });
+  const v = await dlg("หมู่บ้านใหม่", h("div", { class: "stack" }, fld("ชื่อหมู่บ้าน", n), fld("ตำบล", a), fld("อำเภอ", d), fld("จังหวัด", pv)), "สร้าง", () => n.value.trim() ? true : { error: "กรอกชื่อหมู่บ้าน" });
+  if (!v) return;
+  const { error } = await sb.rpc("create_village", { p_name: n.value.trim(), p_subdistrict: a.value.trim(), p_district: d.value.trim(), p_province: pv.value.trim() });
+  if (error) { console.error(error); toast(thErr(error), 1); return; }
+  toast("สร้างหมู่บ้านแล้ว"); await refresh();
+}
+function renderOv() {
+  const P = { today: "วันนี้", "7d": "7 วัน", month: "เดือนนี้", last: "เดือนที่แล้ว" }, R = S.rep;
+  const seg = h("div", { class: "seg" }, Object.entries(P).map(([k, t]) => h("button", { type: "button", class: S.rp === k ? "on" : "", text: t, onclick: () => { S.rp = k; loadReport(); } })));
+  const list = (arr, f) => arr.length ? h("div", { class: "rows" }, arr.map(f)) : h("p", { class: "empty", text: "ไม่มีรายการในช่วงนี้" });
+  $("tab-ov").replaceChildren(seg, !R ? h("p", { class: "empty", text: "กำลังโหลด..." }) : [
+    h("div", { class: "card" }, h("div", { class: "hd", text: "ยอดรับซื้อ " + P[S.rp] }), h("div", { class: "big num", text: "฿" + baht(R.total) }),
+      h("div", { class: "s", text: `${R.receipts} ใบ  น้ำหนัก ${nf.format(R.weight_kg)} กก. (เฉพาะวัสดุหน่วย กก.)` })),
+    h("div", { class: "card" }, h("div", { class: "hd", text: "ยอดค้างในกระเป๋าสมาชิกทุกบ้าน" }), h("div", { class: "big num", text: "฿" + baht(R.owed) }),
+      h("div", { class: "s", text: "คำขอถอนที่รอจ่าย ฿" + baht(R.pending_payout) })),
+    h("h2", { class: "sec", text: "แยกตามวัสดุ" }),
+    list(R.by_material, (x) => h("div", { class: "row" }, h("div", { class: "main" }, h("div", { class: "t", text: x.name }), h("div", { class: "s num", text: nf.format(x.weight) + " " + (UNIT[x.unit] || x.unit) })), h("div", { class: "a num", text: "฿" + baht(x.total) }))),
+    h("h2", { class: "sec", text: "แยกตามหมู่บ้าน" }),
+    list(R.by_village, (x) => h("div", { class: "row" }, h("div", { class: "main" }, h("div", { class: "t", text: x.name }), h("div", { class: "s", text: x.receipts + " ใบ" })), h("div", { class: "a num", text: "฿" + baht(x.total) }))),
+  ], h("div", { class: "pad", style: "margin-top:16px" }, h("button", { class: "btn g", type: "button", text: "+ หมู่บ้านใหม่", onclick: newVillage })));
+}
+
 // ----- boot -----
-function renderAll() { renderBuy(); renderPay(); renderMem(); renderPk(); renderPr(); }
+function renderAll() { renderBuy(); renderPay(); renderMem(); renderPk(); renderPr(); renderOv(); }
 function showTab(t) {
   S.tab = t;
   document.querySelectorAll(".tb button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
-  ["buy", "pay", "mem", "pk", "pr"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
+  ["buy", "pay", "mem", "pk", "pr", "ov"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
+  if (t === "ov") loadReport();
   window.scrollTo(0, 0);
 }
 async function start() {
