@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#14211c;--muted:#5b6862;--paper:#eef1ed;--slip:#fcfdfb;--line:#d5dcd6;--glass:#0d3a32;--amber:#f3b63f;--amber-ink:#2b1d00;--pos:#17724a;--neg:#a8352b;--tab:60px}
+:root{--ink:#14211c;--muted:#5b6862;--paper:#eef1ed;--slip:#fcfdfb;--line:#d5dcd6;--glass:#0d3a32;--amber:#f3b63f;--amber-ink:#2b1d00;--pos:#17724a;--neg:#a8352b;--tab:64px}
 *{box-sizing:border-box}[hidden]{display:none!important}html,body{margin:0}
 body{font-family:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
 button,input,select{font:inherit;color:inherit}button{cursor:pointer}.num{font-variant-numeric:tabular-nums}
@@ -37,8 +37,9 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tot{margin:6px 16px 12px;display:flex;justify-content:space-between;align-items:baseline;font-weight:600}.tot b{font-size:30px}
 .ok{margin:16px;padding:18px;background:#d6eddf;border-radius:16px;text-align:center}.ok b{display:block;font-size:30px}
-.tb{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tb button{position:relative;flex:1;height:var(--tab);border:0;background:transparent;font-size:12px;line-height:1.2;padding:0 2px;color:var(--muted)}
+.tb{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tb::-webkit-scrollbar{display:none}
+.tb button{position:relative;flex:0 0 22%;min-width:76px;height:var(--tab);border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;line-height:1.2;padding:0 2px;color:var(--muted)}
 .tb button[aria-selected=true]{color:var(--glass);font-weight:600}
 .tb button[aria-selected=true]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;background:var(--amber);border-radius:0 0 3px 3px}
 .bd{position:fixed;inset:0;z-index:50;background:rgba(10,20,16,.5);display:flex;align-items:flex-end;justify-content:center}
@@ -62,13 +63,13 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
     <section id="tab-pr" hidden></section>
     <section id="tab-ov" hidden></section>
   </main>
-  <nav class="tb" role="tablist">
-    <button type="button" data-t="buy" aria-selected="true">รับซื้อ</button>
-    <button type="button" data-t="pay" aria-selected="false" id="tbPay">ถอนเงิน</button>
-    <button type="button" data-t="mem" aria-selected="false" id="tbMem">สมาชิก</button>
-    <button type="button" data-t="pk" aria-selected="false" id="tbPk">นัดรับ</button>
-    <button type="button" data-t="pr" aria-selected="false">ราคา</button>
-    <button type="button" data-t="ov" aria-selected="false">สรุป</button>
+  <nav class="tb" role="tablist" aria-label="เมนูหลัก">
+    <button type="button" data-t="buy" aria-selected="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span>รับซื้อ</span></button>
+    <button type="button" data-t="pay" aria-selected="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h12v4"/><path d="M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z"/><circle cx="16.5" cy="14" r="1"/></svg><span id="tbPay">ถอนเงิน</span></button>
+    <button type="button" data-t="mem" aria-selected="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2c2.4.3 4 2.3 4 4.8"/></svg><span id="tbMem">สมาชิก</span></button>
+    <button type="button" data-t="pk" aria-selected="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h11v9H2z"/><path d="M13 9h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg><span id="tbPk">นัดรับ</span></button>
+    <button type="button" data-t="pr" aria-selected="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1"/></svg><span>ราคา</span></button>
+    <button type="button" data-t="ov" aria-selected="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M7 20v-9M12 20V5M17 20v-8"/></svg><span>สรุป</span></button>
   </nav>
 </div>
 <div class="bd" id="dlg" hidden><div class="sh" id="dlgBody"></div></div>
@@ -169,11 +170,18 @@ async function newHouse(contact) {
   const n = h("input", { type: "text", maxlength: "80", placeholder: "เช่น บ้านลุงสมชาย" });
   const c = h("input", { type: "text", value: contact || "" });
   const p = h("input", { type: "tel", inputmode: "tel" });
-  const v = h("select", null, [h("option", { value: "", text: "ไม่ระบุหมู่บ้าน" }), ...S.villages.map((x) => h("option", { value: x.id, text: x.village_name }))]);
+  const v = h("select", null, [h("option", { value: "", text: "ไม่ระบุหมู่บ้าน" }), ...S.villages.map((x) => h("option", { value: x.id, text: x.village_name })), h("option", { value: "__new", text: "+ สร้างหมู่บ้านใหม่..." })]);
+  const vn = h("input", { type: "text", maxlength: "60", placeholder: "ชื่อหมู่บ้านใหม่", style: "display:none" });
+  v.onchange = () => { vn.style.display = v.value === "__new" ? "" : "none"; };
   const a = h("input", { type: "text", placeholder: "เช่น ใกล้วัด ซอย 3" });
-  const f = await dlg("สร้างบ้านใหม่", h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน", v), fld("หมายเหตุที่อยู่", a)), "สร้างบ้าน",
-    () => n.value.trim() ? { name: n.value.trim(), contact: c.value.trim(), phone: p.value.trim(), village: v.value || null, note: a.value.trim() } : { error: "กรอกชื่อบ้าน" });
+  const f = await dlg("สร้างบ้านใหม่", h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน", v), vn, fld("หมายเหตุที่อยู่", a)), "สร้างบ้าน",
+    () => !n.value.trim() ? { error: "กรอกชื่อบ้าน" } : v.value === "__new" && !vn.value.trim() ? { error: "กรอกชื่อหมู่บ้านใหม่" } : { name: n.value.trim(), contact: c.value.trim(), phone: p.value.trim(), village: v.value || null, vname: vn.value.trim(), note: a.value.trim() });
   if (!f) return null;
+  if (f.village === "__new") {
+    const vr = await sb.rpc("create_village", { p_name: f.vname });
+    if (vr.error) { console.error(vr.error); toast(thErr(vr.error), 1); return null; }
+    f.village = vr.data;
+  }
   const { data, error } = await sb.rpc("create_household", { p_name: f.name, p_contact: f.contact, p_phone: f.phone, p_village_id: f.village, p_address_note: f.note });
   if (error) { console.error(error); toast(thErr(error), 1); return null; }
   toast("สร้างบ้าน " + data.household_code + " แล้ว");
@@ -560,7 +568,7 @@ function renderOv() {
 function renderAll() { renderBuy(); renderPay(); renderMem(); renderPk(); renderPr(); renderOv(); }
 function showTab(t) {
   S.tab = t;
-  document.querySelectorAll(".tb button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
+  document.querySelectorAll(".tb button").forEach((b) => { const on = b.dataset.t === t; b.setAttribute("aria-selected", String(on)); if (on) { const nav = b.parentElement; nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: "smooth" }); } });
   ["buy", "pay", "mem", "pk", "pr", "ov"].forEach((k) => { $("tab-" + k).hidden = k !== t; });
   if (t === "ov") loadReport();
   window.scrollTo(0, 0);
