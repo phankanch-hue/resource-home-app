@@ -90,6 +90,14 @@ const $ = (id) => document.getElementById(id);
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const _rc = Element.prototype.replaceChildren;
 Element.prototype.replaceChildren = function (...k) { return _rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); };
+const TABS = ["buy", "pay", "mem", "pk", "pr", "ov"];
+function initialTab() {
+  const q = new URLSearchParams(location.search);
+  let t = q.get("tab");
+  if (!t) { const m = (q.get("liff.state") || "").match(/[?&]tab=(\w+)/); if (m) t = m[1]; }
+  return TABS.includes(t) ? t : null;
+}
+const T0 = initialTab();
 const S = { rp: "today", rep: null, hq: "", user: null, allMats: [], pk: [], min: 50, mats: [], price: new Map(), villages: [], recent: [], pays: [], unlinked: [], tab: "buy" };
 const B = { pickup: null, house: null, lines: [], done: null, busy: false };
 const UNIT = { kg: "กก.", piece: "ชิ้น", bag: "ถุง" };
@@ -580,7 +588,7 @@ async function start() {
     const r = must(await sb.from("user_roles").select("role").eq("user_id", S.user.id).maybeSingle());
     if (!r || r.role !== "admin") { showFail("บัญชีนี้ไม่มีสิทธิ์เข้าหน้านี้", "ต้องเป็นผู้ดูแล (admin)", null); return; }
     await loadAll();
-    $("state").hidden = true; $("app").hidden = false; showTab(S.tab);
+    $("state").hidden = true; $("app").hidden = false; showTab(T0 || initialTab() || S.tab);
   } catch (e) {
     console.error(e);
     if (e && e.code === "auth_expired") showFail("ล็อกอินหมดอายุ", "เปิดผ่าน LINE ใหม่อีกครั้ง", "ล็อกอิน LINE ใหม่", relogin);

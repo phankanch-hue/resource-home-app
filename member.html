@@ -260,6 +260,14 @@ const CONFIG = {
 const $ = (id) => document.getElementById(id);
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
+const TABS = ["wallet", "history", "prices", "pickup"];
+function initialTab() {
+  const q = new URLSearchParams(location.search);
+  let t = q.get("tab");
+  if (!t) { const m = (q.get("liff.state") || "").match(/[?&]tab=(\w+)/); if (m) t = m[1]; }
+  return TABS.includes(t) ? t : null;
+}
+const T0 = initialTab();
 const state = {
   user: null, profile: null, hh: null, bal: null, min: 50,
   ledger: [], purchases: [], payouts: [], mats: [], prices: [], pickups: [],
@@ -680,7 +688,7 @@ async function start() {
     if (!state.profile.household_id) { showPending(); return; }
     await loadAll();
     showApp();
-    showTab(state.tab);
+    showTab(T0 || initialTab() || state.tab);
   } catch (e) {
     console.error(e);
     if (e && e.code === "auth_expired") {
