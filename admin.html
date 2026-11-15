@@ -76,6 +76,7 @@ input,select{width:100%;padding:11px 12px;border:1px solid #b9c3bb;border-radius
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // ===== ใส่ค่า (LIFF_ID ของหน้าแอดมินเป็นคนละตัวกับหน้าสมาชิก) =====
@@ -172,7 +173,7 @@ function pickHouse() {
   };
   q.oninput = () => { clearTimeout(t); t = setTimeout(run, 250); };
   run();
-  return dlg("เลือกบ้าน", h("div", { class: "stack" }, q, list), null);
+  return dlg("เลือกบ้าน", h("div", { class: "stack" }, h("button", { class: "btn", type: "button", text: "สแกน QR บ้าน", onclick: async () => { const x = await scanHouse(); if (x && dlgDone) dlgDone(x); } }), q, list), null);
 }
 async function newHouse(contact) {
   const n = h("input", { type: "text", maxlength: "80", placeholder: "เช่น บ้านลุงสมชาย" });
@@ -377,9 +378,38 @@ function renderMem() {
       h("div", { class: "acts", style: "width:100%;margin:0" },
         h("button", { class: "btn s", type: "button", text: "ผูกบ้านที่มีอยู่", onclick: async () => { const x = await pickHouse(); if (x) await linkTo(u.id, x.id); } }),
         h("button", { class: "btn g s", type: "button", text: "สร้างบ้านใหม่และผูก", onclick: async () => { const r = await newHouse(u.display_name); if (r) await linkTo(u.id, r.id); } }))))) : h("p", { class: "empty", text: "ไม่มีสมาชิกที่รอผูก" }),
-    h("h2", { class: "sec", text: "บ้านทั้งหมด" }), h("div", { class: "pad", style: "margin-bottom:10px" }, hq), hl,
+    h("h2", { class: "sec", text: "บ้านทั้งหมด" }), h("div", { class: "pad", style: "margin-bottom:10px;display:grid;gap:8px" }, h("button", { class: "btn g", type: "button", text: "สแกน QR บ้าน", onclick: async () => { const x = await scanHouse(); if (x) houseDetail(x.id); } }), hq), hl,
     h("h2", { class: "sec", text: "บ้านใหม่" }),
     h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ สร้างบ้านใหม่ (ยังไม่ผูกสมาชิก)", onclick: async () => { await newHouse(""); } })));
+}
+
+// ----- QR (house code) -----
+function makeQr(el, text, size) {
+  el.replaceChildren();
+  if (typeof QRCode === "undefined") { el.textContent = text; return; }
+  new QRCode(el, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+}
+async function scanHouse() {
+  if (!(window.liff && liff.isInClient())) { toast("สแกนได้เฉพาะในแอป LINE", 1); return null; }
+  try {
+    const r = await liff.scanCodeV2();
+    const v = String((r && r.value) || "").trim();
+    if (!v) return null;
+    const m = v.match(/^(?:RH:)?(RS\d{5})$/i);
+    if (!m) { toast("ไม่ใช่ QR ของบ้านในระบบ", 1); return null; }
+    const { data, error } = await sb.from("households").select("id,household_code,household_name,contact_name,village,status").eq("household_code", m[1].toUpperCase()).maybeSingle();
+    if (error) throw error;
+    if (!data) { toast("ไม่พบบ้านรหัส " + m[1].toUpperCase(), 1); return null; }
+    if (data.status !== "active") { toast("บ้าน " + data.household_code + " ถูกระงับ", 1); return null; }
+    return data;
+  } catch (e) { console.error(e); toast("สแกนไม่สำเร็จ ตรวจว่าเปิด Scan QR ที่ LIFF และอนุญาตกล้อง", 1); return null; }
+}
+function showQr(hh) {
+  const box = h("div", { style: "background:#fff;padding:16px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;justify-self:center" });
+  const p = dlg("QR บ้าน", h("div", { class: "stack", style: "text-align:center" }, box, h("b", { text: hh.household_code + "  " + hh.household_name }),
+    h("p", { class: "hint", style: "margin:0", text: "แคปหน้าจอนี้ไปพิมพ์ติดบัตรสมาชิกได้" })), null);
+  makeQr(box, "RH:" + hh.household_code, 240);
+  return p;
 }
 
 // ----- address helper -----
@@ -543,7 +573,7 @@ async function houseDetail(id) {
       h("div", { class: "s", text: [hh.contact_name, hh.phone, addrOf(hh), hh.address_note].filter(Boolean).join("  ") }),
       h("div", { class: "card", style: "margin:0" }, h("div", { class: "hd", text: "ยอดที่ถอนได้" }), h("div", { class: "big num", text: "฿" + baht(b.available_balance) }),
         h("div", { class: "s", text: `สะสม ฿${baht(b.total_earned)}  รับแล้ว ฿${baht(b.total_paid)}  รอจ่าย ฿${baht(b.reserved_amount)}` })),
-      h("div", { class: "acts", style: "margin:0" }, act("adjust", "ปรับยอด", ""), act("edit", "แก้ไขข้อมูล", "g"), act("status", hh.status === "active" ? "ระงับบ้าน" : "เปิดใช้งานบ้าน", "g")),
+      h("div", { class: "acts", style: "margin:0" }, act("adjust", "ปรับยอด", ""), act("edit", "แก้ไขข้อมูล", "g"), act("qr", "แสดง QR", "g"), act("status", hh.status === "active" ? "ระงับบ้าน" : "เปิดใช้งานบ้าน", "g")),
       h("b", { text: "สมาชิก LINE ที่ผูกอยู่" }),
       mem.length ? mem.map((m) => h("div", { class: "row", style: "padding:6px 0" }, h("div", { class: "main", text: m.display_name || "(ไม่มีชื่อ)" }), act("unlink", "ยกเลิกผูก", "d", { pid: m.id }))) : h("div", { class: "s", text: "ยังไม่มีสมาชิกผูกอยู่" }),
       h("b", { text: "รับซื้อล่าสุด" }), pur.length ? pur.map((p) => h("div", { class: "s num", text: `${p.receipt_no}  ฿${baht(p.gross_total)}  ${STATUS[p.status]}` })) : h("div", { class: "s", text: "ยังไม่มี" }),
@@ -552,6 +582,7 @@ async function houseDetail(id) {
     if (!r) return;
     if (r.a === "adjust") await adjustDlg(hh);
     else if (r.a === "edit") await editHouse(hh);
+    else if (r.a === "qr") await showQr(hh);
     else if (r.a === "status") {
       const { error } = await sb.from("households").update({ status: hh.status === "active" ? "inactive" : "active" }).eq("id", id);
       if (error) { toast(thErr(error), 1); } else { toast("บันทึกแล้ว"); await refresh(); }

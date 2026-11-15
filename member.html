@@ -243,9 +243,21 @@
   </div>
 </div>
 
+<!-- house QR sheet -->
+<div class="backdrop" id="qrSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <h2>QR ประจำบ้าน</h2>
+    <div id="qrBox" style="background:#fff;padding:16px;border:1px solid var(--line);border-radius:14px;display:grid;place-items:center;justify-self:center"></div>
+    <p class="hint" id="qrCode" style="text-align:center;margin:0"></p>
+    <p class="hint" style="text-align:center;margin:0">ให้เจ้าหน้าที่สแกนตอนรับซื้อ เพิ่มความสว่างหน้าจอจะสแกนง่ายขึ้น</p>
+    <button type="button" class="btn ghost" id="qrClose">ปิด</button>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // ===== ใส่ค่าให้ครบ (คัดลอกจาก liff_test.html ได้เลย) =====
@@ -483,6 +495,7 @@ function renderWallet() {
     ),
     h("button", { class: "btn cta", type: "button", text: "ขอรับเงิน", disabled: !canPay, onclick: openPayout }),
     h("p", { class: "note", text: hint }),
+    h("button", { class: "btn ghost cta", type: "button", text: "แสดง QR ประจำบ้าน", onclick: openQr }),
     h("h2", { class: "sec", text: "ความเคลื่อนไหวล่าสุด" }),
     ledgerRows.length
       ? h("div", { class: "rows" }, ledgerRows)
@@ -606,6 +619,17 @@ function renderPickup() {
   );
 }
 
+// ---------- house QR ----------
+function openQr() {
+  const code = state.hh.household_code;
+  $("qrCode").textContent = "รหัสบ้าน " + code + "  " + (state.hh.household_name || "");
+  const box = $("qrBox");
+  box.replaceChildren();
+  if (typeof QRCode === "undefined") box.textContent = "สร้าง QR ไม่ได้ ให้แจ้งรหัสบ้านกับเจ้าหน้าที่แทน";
+  else new QRCode(box, { text: "RH:" + code, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+  $("qrSheet").hidden = false;
+}
+
 // ---------- payout ----------
 function syncMethod() {
   const m = $("pMethod").value;
@@ -706,6 +730,8 @@ $("btnRefresh").onclick = async () => {
 $("pMethod").onchange = syncMethod;
 $("pAll").onclick = () => { $("pAmount").value = money(state.bal.available_balance).toFixed(2); };
 $("pCancel").onclick = closePayout;
+$("qrClose").onclick = () => { $("qrSheet").hidden = true; };
+$("qrSheet").addEventListener("click", (ev) => { if (ev.target === $("qrSheet")) $("qrSheet").hidden = true; });
 $("pSubmit").onclick = submitPayout;
 $("sheet").addEventListener("click", (ev) => { if (ev.target === $("sheet")) closePayout(); });
 
