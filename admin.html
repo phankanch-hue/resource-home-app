@@ -323,6 +323,40 @@ async function voidBuy(p) {
 }
 
 // ----- payouts -----
+// ----- PromptPay QR (Thai QR Payment / EMVCo) -----
+function crc16(s) {
+  let c = 0xFFFF;
+  for (let i = 0; i < s.length; i++) {
+    c ^= s.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
+  }
+  return c.toString(16).toUpperCase().padStart(4, "0");
+}
+function ppPayload(target, amount) {
+  const t = String(target || "").replace(/\D/g, "");
+  let tag, sub;
+  if (t.length === 10 && t[0] === "0") { tag = "01"; sub = "0066" + t.slice(1); }
+  else if (t.length === 13) { tag = "02"; sub = t; }
+  else if (t.length === 15) { tag = "03"; sub = t; }
+  else return null;
+  const f = (id, v) => id + String(v.length).padStart(2, "0") + v;
+  const body = f("00", "01") + f("01", amount ? "12" : "11") + f("29", f("00", "A000000677010111") + f(tag, sub)) + f("53", "764")
+    + (amount ? f("54", Number(amount).toFixed(2)) : "") + f("58", "TH") + "6304";
+  return body + crc16(body);
+}
+async function showPromptPay(p) {
+  const hs = p.households || {};
+  const payload = ppPayload(p.payout_reference, p.amount);
+  if (!payload) { toast("เลขพร้อมเพย์ไม่ถูกต้อง (ต้องเป็นเบอร์ 10 หลัก หรือเลขบัตร 13 หลัก)", 1); return; }
+  const box = h("div", { style: "background:#fff;padding:16px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;justify-self:center" });
+  const pr = dlg("QR พร้อมเพย์", h("div", { class: "stack", style: "text-align:center" },
+    h("div", { class: "num", style: "font-size:32px;font-weight:600", text: "฿" + baht(p.amount) }), box,
+    h("div", { class: "s", text: "พร้อมเพย์ " + p.payout_reference + "  (" + (hs.household_code || "") + " " + (hs.household_name || "") + ")" }),
+    h("p", { class: "hint", style: "margin:0", text: "สแกนด้วยแอปธนาคาร ตรวจชื่อผู้รับในแอปก่อนโอนทุกครั้ง แล้วกดปุ่มด้านล่างเมื่อโอนเสร็จ" })), "โอนแล้ว ไปกดจ่ายแล้ว");
+  makeQr(box, payload, 240);
+  if (await pr) await act(p, "paid");
+}
+
 function payCard(p) {
   const hs = p.households || {};
   const open = p.status === "pending" || p.status === "approved";
@@ -333,6 +367,7 @@ function payCard(p) {
     h("div", { class: "s", text: dt(p.requested_at) + (p.staff_note ? "  หมายเหตุ: " + p.staff_note : "") }),
     open ? h("div", { class: "acts" },
       p.status === "pending" ? h("button", { class: "btn s", style: "background:#dce8f7;color:#1c4585", type: "button", text: "อนุมัติ", onclick: () => act(p, "approve") }) : null,
+      p.payout_method === "promptpay" ? h("button", { class: "btn s", style: "background:#d6eddf;color:#13613c", type: "button", text: "QR พร้อมเพย์", onclick: () => showPromptPay(p) }) : null,
       h("button", { class: "btn s", type: "button", text: "จ่ายแล้ว", onclick: () => act(p, "paid") }),
       h("button", { class: "btn d s", type: "button", text: "ปฏิเสธ", onclick: () => act(p, "reject") })) : null);
 }
