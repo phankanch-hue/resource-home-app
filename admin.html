@@ -180,13 +180,14 @@ async function newHouse(contact) {
   const p = h("input", { type: "tel", inputmode: "tel" });
   const v = h("select", null, [h("option", { value: "", text: "ไม่ระบุหมู่บ้าน" }), ...S.villages.map((x) => h("option", { value: x.id, text: x.village_name })), h("option", { value: "__new", text: "+ สร้างหมู่บ้านใหม่..." })]);
   const vn = h("input", { type: "text", maxlength: "60", placeholder: "ชื่อหมู่บ้านใหม่", style: "display:none" });
-  v.onchange = () => { vn.style.display = v.value === "__new" ? "" : "none"; };
+  const vx = ["ตำบล", "อำเภอ", "จังหวัด"].map((t) => h("input", { type: "text", maxlength: "60", placeholder: t, style: "display:none" }));
+  v.onchange = () => { const s = v.value === "__new" ? "" : "none"; vn.style.display = s; vx.forEach((i) => { i.style.display = s; }); };
   const a = h("input", { type: "text", placeholder: "เช่น ใกล้วัด ซอย 3" });
-  const f = await dlg("สร้างบ้านใหม่", h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน", v), vn, fld("หมายเหตุที่อยู่", a)), "สร้างบ้าน",
-    () => !n.value.trim() ? { error: "กรอกชื่อบ้าน" } : v.value === "__new" && !vn.value.trim() ? { error: "กรอกชื่อหมู่บ้านใหม่" } : { name: n.value.trim(), contact: c.value.trim(), phone: p.value.trim(), village: v.value || null, vname: vn.value.trim(), note: a.value.trim() });
+  const f = await dlg("สร้างบ้านใหม่", h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน", v), vn, vx, fld("หมายเหตุที่อยู่", a)), "สร้างบ้าน",
+    () => !n.value.trim() ? { error: "กรอกชื่อบ้าน" } : v.value === "__new" && !vn.value.trim() ? { error: "กรอกชื่อหมู่บ้านใหม่" } : { name: n.value.trim(), contact: c.value.trim(), phone: p.value.trim(), village: v.value || null, vname: vn.value.trim(), vsub: vx[0].value.trim(), vdis: vx[1].value.trim(), vpro: vx[2].value.trim(), note: a.value.trim() });
   if (!f) return null;
   if (f.village === "__new") {
-    const vr = await sb.rpc("create_village", { p_name: f.vname });
+    const vr = await sb.rpc("create_village", { p_name: f.vname, p_subdistrict: f.vsub, p_district: f.vdis, p_province: f.vpro });
     if (vr.error) { console.error(vr.error); toast(thErr(vr.error), 1); return null; }
     f.village = vr.data;
   }
@@ -222,11 +223,11 @@ async function loadAll() {
   const [mats, prices, vil, rec, pays, unl, pk, set] = await Promise.all([
     sb.from("materials").select("id,material_name,unit,is_active").order("material_name"),
     sb.from("material_prices").select("material_id,buy_price").is("effective_to", null),
-    sb.from("villages").select("id,village_name").eq("is_active", true).order("village_code"),
+    sb.from("villages").select("id,village_name,subdistrict,district,province").eq("is_active", true).order("village_code"),
     sb.from("purchase_transactions").select("id,receipt_no,status,gross_total,confirmed_at,created_at,households(household_code,household_name)").in("status", ["confirmed", "voided"]).order("created_at", { ascending: false }).limit(12),
     sb.from("payout_requests").select("id,amount,payout_method,payout_reference,status,requested_at,staff_note,households(household_code,household_name)").order("requested_at", { ascending: false }).limit(40),
     sb.from("profiles").select("id,display_name,picture_url,created_at").is("household_id", null).order("created_at", { ascending: false }).limit(30),
-    sb.from("pickup_requests").select("id,requested_date,preferred_time,material_note,estimated_weight_kg,status,staff_note,households(id,household_code,household_name)").in("status", ["requested", "scheduled"]).order("requested_date", { ascending: true }).limit(40),
+    sb.from("pickup_requests").select("id,requested_date,preferred_time,material_note,estimated_weight_kg,status,staff_note,households(id,household_code,household_name,contact_name,phone,village,subdistrict,district,province,address_note,villages(village_name,subdistrict,district,province))").in("status", ["requested", "scheduled"]).order("requested_date", { ascending: true }).limit(40),
     sb.from("app_settings").select("value").eq("key", "min_payout_amount").maybeSingle(),
   ]);
   S.allMats = must(mats) || [];
@@ -381,6 +382,14 @@ function renderMem() {
     h("div", { class: "pad" }, h("button", { class: "btn g", type: "button", text: "+ สร้างบ้านใหม่ (ยังไม่ผูกสมาชิก)", onclick: async () => { await newHouse(""); } })));
 }
 
+// ----- address helper -----
+function addrOf(x) {
+  if (!x) return "";
+  const v = x.villages || {};
+  const g = (k) => v[k] || x[k];
+  return [v.village_name || x.village, g("subdistrict") && "ต." + g("subdistrict"), g("district") && "อ." + g("district"), g("province") && "จ." + g("province")].filter(Boolean).join(" ");
+}
+
 // ----- pickups -----
 const PKS = { requested: "รอยืนยัน", scheduled: "นัดหมายแล้ว" };
 const dd = (d) => d ? new Date(d + "T00:00:00+07:00").toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" }) : "ไม่ระบุวัน";
@@ -404,6 +413,8 @@ function renderPk() {
       h("div", { class: "hd" }, h("span", { text: (hs.household_code || "") + " " + (hs.household_name || "") }), h("span", { class: "chip st-" + (p.status === "scheduled" ? "approved" : "pending"), text: PKS[p.status] })),
       h("div", { class: "t", text: dd(p.requested_date) + "  " + (p.preferred_time || "") }),
       h("div", { class: "s", text: (p.material_note || "") + (p.estimated_weight_kg ? "  ประมาณ " + p.estimated_weight_kg + " กก." : "") }),
+      addrOf(hs) ? h("div", { class: "s", text: addrOf(hs) + (hs.address_note ? "  (" + hs.address_note + ")" : "") }) : null,
+      hs.phone ? h("div", { class: "s" }, (hs.contact_name || "") + " ", h("a", { href: "tel:" + hs.phone, text: hs.phone })) : null,
       p.staff_note ? h("div", { class: "s", text: "หมายเหตุ: " + p.staff_note }) : null,
       h("div", { class: "acts" },
         p.status === "requested" ? h("button", { class: "btn s", type: "button", text: "นัดหมาย", onclick: () => pkSet(p, "scheduled") }) : null,
@@ -492,12 +503,34 @@ async function adjustDlg(hh) {
   if (error) { console.error(error); toast(thErr(error), 1); return; }
   toast("ปรับยอดแล้ว"); await refresh();
 }
+async function editHouse(hh) {
+  const n = h("input", { type: "text", maxlength: "80", value: hh.household_name || "" });
+  const c = h("input", { type: "text", value: hh.contact_name || "" });
+  const p = h("input", { type: "tel", inputmode: "tel", value: hh.phone || "" });
+  const v = h("select", null, [h("option", { value: "", text: "ไม่ระบุหมู่บ้าน" }), ...S.villages.map((x) => h("option", { value: x.id, text: x.village_name }))]);
+  v.value = hh.village_id || "";
+  const sd = h("input", { type: "text", placeholder: "ตำบล" }), di = h("input", { type: "text", placeholder: "อำเภอ" }), pv = h("input", { type: "text", placeholder: "จังหวัด" });
+  const fill = () => { const x = S.villages.find((y) => y.id === v.value) || {}; sd.value = x.subdistrict || ""; di.value = x.district || ""; pv.value = x.province || ""; [sd, di, pv].forEach((i) => { i.disabled = !v.value; }); };
+  v.onchange = fill; fill();
+  const a = h("input", { type: "text", placeholder: "เช่น ใกล้วัด ซอย 3", value: hh.address_note || "" });
+  const r = await dlg("แก้ไขข้อมูลบ้าน " + hh.household_code, h("div", { class: "stack" }, fld("ชื่อบ้าน", n), fld("ผู้ติดต่อ", c), fld("เบอร์โทร", p), fld("หมู่บ้าน (แก้ตำบล อำเภอ จังหวัดของหมู่บ้านได้ที่นี่)", v), sd, di, pv, fld("หมายเหตุที่อยู่ของบ้านนี้", a)), "บันทึก",
+    () => n.value.trim() ? { ok: true } : { error: "กรอกชื่อบ้าน" });
+  if (!r) return;
+  try {
+    const vil = S.villages.find((y) => y.id === v.value);
+    const t = (i) => i.value.trim() || null;
+    if (vil) must(await sb.from("villages").update({ subdistrict: t(sd), district: t(di), province: t(pv) }).eq("id", vil.id));
+    must(await sb.from("households").update({ household_name: n.value.trim(), contact_name: c.value.trim() || n.value.trim(), phone: t(p), village_id: v.value || null,
+      village: vil ? vil.village_name : null, subdistrict: vil ? t(sd) : null, district: vil ? t(di) : null, province: vil ? t(pv) : null, address_note: t(a) }).eq("id", hh.id));
+    toast("บันทึกแล้ว"); await refresh();
+  } catch (e) { console.error(e); toast(thErr(e), 1); }
+}
 async function houseDetail(id) {
   for (;;) {
     let hh, bal, mem, pur, pay;
     try {
       [hh, bal, mem, pur, pay] = (await Promise.all([
-        sb.from("households").select("id,household_code,household_name,contact_name,phone,village,status").eq("id", id).single(),
+        sb.from("households").select("id,household_code,household_name,contact_name,phone,village,subdistrict,district,province,address_note,village_id,status").eq("id", id).single(),
         sb.from("wallet_balances").select("*").eq("household_id", id).maybeSingle(),
         sb.from("profiles").select("id,display_name").eq("household_id", id),
         sb.from("purchase_transactions").select("receipt_no,status,gross_total").eq("household_id", id).in("status", ["confirmed", "voided"]).order("created_at", { ascending: false }).limit(5),
@@ -507,10 +540,10 @@ async function houseDetail(id) {
     const b = bal || {};
     const act = (a, t, cls, extra) => h("button", { class: "btn s " + cls, type: "button", text: t, onclick: () => dlgDone && dlgDone({ a, ...extra }) });
     const body = h("div", { class: "stack" },
-      h("div", { class: "s", text: [hh.contact_name, hh.phone, hh.village].filter(Boolean).join("  ") }),
+      h("div", { class: "s", text: [hh.contact_name, hh.phone, addrOf(hh), hh.address_note].filter(Boolean).join("  ") }),
       h("div", { class: "card", style: "margin:0" }, h("div", { class: "hd", text: "ยอดที่ถอนได้" }), h("div", { class: "big num", text: "฿" + baht(b.available_balance) }),
         h("div", { class: "s", text: `สะสม ฿${baht(b.total_earned)}  รับแล้ว ฿${baht(b.total_paid)}  รอจ่าย ฿${baht(b.reserved_amount)}` })),
-      h("div", { class: "acts", style: "margin:0" }, act("adjust", "ปรับยอด", ""), act("status", hh.status === "active" ? "ระงับบ้าน" : "เปิดใช้งานบ้าน", "g")),
+      h("div", { class: "acts", style: "margin:0" }, act("adjust", "ปรับยอด", ""), act("edit", "แก้ไขข้อมูล", "g"), act("status", hh.status === "active" ? "ระงับบ้าน" : "เปิดใช้งานบ้าน", "g")),
       h("b", { text: "สมาชิก LINE ที่ผูกอยู่" }),
       mem.length ? mem.map((m) => h("div", { class: "row", style: "padding:6px 0" }, h("div", { class: "main", text: m.display_name || "(ไม่มีชื่อ)" }), act("unlink", "ยกเลิกผูก", "d", { pid: m.id }))) : h("div", { class: "s", text: "ยังไม่มีสมาชิกผูกอยู่" }),
       h("b", { text: "รับซื้อล่าสุด" }), pur.length ? pur.map((p) => h("div", { class: "s num", text: `${p.receipt_no}  ฿${baht(p.gross_total)}  ${STATUS[p.status]}` })) : h("div", { class: "s", text: "ยังไม่มี" }),
@@ -518,6 +551,7 @@ async function houseDetail(id) {
     const r = await dlg(hh.household_code + "  " + hh.household_name, body, null);
     if (!r) return;
     if (r.a === "adjust") await adjustDlg(hh);
+    else if (r.a === "edit") await editHouse(hh);
     else if (r.a === "status") {
       const { error } = await sb.from("households").update({ status: hh.status === "active" ? "inactive" : "active" }).eq("id", id);
       if (error) { toast(thErr(error), 1); } else { toast("บันทึกแล้ว"); await refresh(); }
